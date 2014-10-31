@@ -7,7 +7,7 @@ import (
 	"errors"
 	"image"
 	"image/color"
-	"utils/qr/coding"
+	"github.com/globalways/gws_utils_go/qr/coding"
 )
 
 // A Level denotes a QR error correction level.

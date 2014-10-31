@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"utils/qr/gf256"
+	"github.com/globalways/gws_utils_go/qr/gf256"
 )
 
 // Field is the field for QR error correction.
