@@ -5,7 +5,10 @@
 // DATE: 14-7-9 10:14
 package errors
 
-import "fmt"
+import (
+	"fmt"
+	"errors"
+)
 
 // Standard struct for general types of errors.
 //
@@ -42,7 +45,11 @@ func (e *GlobalWaysBaseError) GetContext() string {
 
 // This returns the wrapped error, if there is one.
 func (e *GlobalWaysBaseError) GetInner() error {
-	return e.inner
+	if e.inner != nil {
+		return e.inner
+	}
+
+	return errors.New("No description.")
 }
 
 // This returns the error code
