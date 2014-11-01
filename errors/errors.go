@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-var GlobalWaysErrors map[int]string
-
 // This interface exposes additional information about the error.
 type GlobalWaysError interface {
 	// This returns the error message without the stack trace.

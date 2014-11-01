@@ -64,10 +64,10 @@ func (e *GlobalWaysBaseError) ErrorMessage() string {
 
 // This returns a new GlobalWaysBaseError initialized with the given message and
 // the current stack trace.
-func New(code int, msg string) GlobalWaysError {
+func New(code int) GlobalWaysError {
 	stack, context := StackTrace()
 	return &GlobalWaysBaseError{
-		Msg:     msg,
+		Msg:     GetCodeMessage(code),
 		Stack:   stack,
 		Context: context,
 		Code:    code,
@@ -86,10 +86,11 @@ func Newf(code int, format string, args ...interface{}) GlobalWaysError {
 }
 
 // Wraps another error in a new GlobalWaysBaseError.
-func Wrap(code int, err error, msg string) GlobalWaysError {
+func Wrap(code int, err error) GlobalWaysError {
+
 	stack, context := StackTrace()
 	return &GlobalWaysBaseError{
-		Msg:     msg,
+		Msg:     GetCodeMessage(code),
 		Stack:   stack,
 		Context: context,
 		inner:   err,
