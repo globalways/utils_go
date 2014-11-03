@@ -25,8 +25,8 @@ const (
 // http error code
 const (
 	CODE_HTTP_ERR_BASE           = -200
-	CODE_HTTP_ERR_INVALID_PARAMS = CODE_HTTP_ERR_BASE - 1
-	CODE_HTTP_ERR_READ_REQ_BODY  = CODE_HTTP_ERR_BASE - 2
+	CODE_HTTP_ERR_NOT_HTTPS      = CODE_HTTP_ERR_BASE - 1
+	CODE_HTTP_ERR_INVALID_PARAMS = CODE_HTTP_ERR_BASE - 2
 )
 
 var _globalWaysErrors map[int]string
@@ -41,8 +41,8 @@ func init() {
 	_globalWaysErrors[CODE_DB_ERR_UPDATE] = "update data error"
 	_globalWaysErrors[CODE_DB_ERR_FIND] = "find data error"
 
+	_globalWaysErrors[CODE_HTTP_ERR_NOT_HTTPS] = "api just allow https connection."
 	_globalWaysErrors[CODE_HTTP_ERR_INVALID_PARAMS] = "invalid parameters."
-	_globalWaysErrors[CODE_HTTP_ERR_READ_REQ_BODY] = "read http request body error"
 }
 
 func GetCodeMessage(code int) string {
