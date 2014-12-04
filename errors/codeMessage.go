@@ -29,6 +29,12 @@ const (
 	CODE_HTTP_ERR_INVALID_PARAMS = CODE_HTTP_ERR_BASE - 2
 )
 
+// business error code
+const (
+	CODE_BISS_ERR_BASE           = -300
+	CODE_BISS_ERR_TEL_ALREADY_IN = CODE_BISS_ERR_BASE - 1
+)
+
 var _globalWaysErrors map[int]string
 func init() {
 	// init error
