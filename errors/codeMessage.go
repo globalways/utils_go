@@ -33,6 +33,13 @@ const (
 const (
 	CODE_BISS_ERR_BASE           = -300
 	CODE_BISS_ERR_TEL_ALREADY_IN = CODE_BISS_ERR_BASE - 1
+	CODE_BISS_ERR_SMS_FAIL       = CODE_BISS_ERR_BASE - 2
+	CODE_BISS_ERR_SMS_CODE       = CODE_BISS_ERR_BASE - 3
+)
+
+// system internal error code
+const (
+	CODE_SYS_ERR_BASE            = -400
 )
 
 var _globalWaysErrors map[int]string
@@ -49,6 +56,12 @@ func init() {
 
 	_globalWaysErrors[CODE_HTTP_ERR_NOT_HTTPS] = "api just allow https connection."
 	_globalWaysErrors[CODE_HTTP_ERR_INVALID_PARAMS] = "invalid parameters."
+
+	_globalWaysErrors[CODE_BISS_ERR_TEL_ALREADY_IN] = "telphone is already registed."
+	_globalWaysErrors[CODE_BISS_ERR_SMS_FAIL] = "failed to generate sms auth code."
+	_globalWaysErrors[CODE_BISS_ERR_SMS_CODE] = "sms auth code wrong."
+
+	_globalWaysErrors[CODE_SYS_ERR_BASE] = "服务器去月球旅行啦"
 }
 
 func GetCodeMessage(code int) string {

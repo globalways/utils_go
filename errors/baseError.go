@@ -120,7 +120,7 @@ func Wrapf(code int, err error, format string, args ...interface{}) GlobalWaysEr
 // equeal error = nil
 func ErrorOK() GlobalWaysError {
 	return &GlobalWaysBaseError{
-		Msg:     "",
+		Msg:     "everything is ok.",
 		Stack:   "",
 		Context: "",
 		inner:   nil,

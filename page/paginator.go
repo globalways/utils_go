@@ -11,21 +11,21 @@ import (
 )
 
 type Paginator struct {
-	Request     *http.Request
-	PerPageNums int
-	MaxPages    int
+	Request  *http.Request
+	MaxPages int
 
-	nums      int64
-	pageRange []int
-	pageNums  int
-	page      int
+	nums        int64
+	pageRange   []int
+	perPageNums int
+	pageNums    int
+	page        int
 }
 
 func (p *Paginator) PageNums() int {
 	if p.pageNums != 0 {
 		return p.pageNums
 	}
-	pageNums := math.Ceil(float64(p.nums) / float64(p.PerPageNums))
+	pageNums := math.Ceil(float64(p.nums) / float64(p.perPageNums))
 	if p.MaxPages > 0 {
 		pageNums = math.Min(pageNums, float64(p.MaxPages))
 	}
@@ -56,6 +56,23 @@ func (p *Paginator) Page() int {
 		p.page = 1
 	}
 	return p.page
+}
+
+func (p *Paginator) Size() int {
+	if p.perPageNums > 0 {
+		return p.perPageNums
+	}
+
+	if p.Request.Form == nil {
+		p.Request.ParseForm()
+	}
+
+	p.perPageNums, _ = strconv.Atoi(p.Request.Form.Get("size"))
+	if p.perPageNums <= 0 {
+		p.perPageNums = 10
+	}
+
+	return p.perPageNums
 }
 
 func (p *Paginator) Pages() []int {
@@ -134,7 +151,7 @@ func (p *Paginator) IsActive(page int) bool {
 }
 
 func (p *Paginator) Offset() int {
-	return (p.Page() - 1) * p.PerPageNums
+	return (p.Page() - 1) * p.Size()
 }
 
 func (p *Paginator) HasPages() bool {
@@ -147,7 +164,22 @@ func NewPaginator(req *http.Request, per int, nums int64) *Paginator {
 	if per <= 0 {
 		per = 10
 	}
-	p.PerPageNums = per
+	p.perPageNums = per
 	p.SetNums(nums)
 	return &p
+}
+
+func NewDBPaginator(page, size int) *Paginator {
+	if page <= 0 {
+		page = 1
+	}
+
+	if size <= 0 {
+		size = 10
+	}
+
+	return &Paginator{
+		perPageNums: size,
+		page:        page,
+	}
 }

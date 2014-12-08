@@ -6,7 +6,6 @@
 package security
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
@@ -14,6 +13,7 @@ import (
 	"crypto/sha1"
 	"crypto/cipher"
 	"crypto/aes"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //密码加密
@@ -21,6 +21,7 @@ func GenerateFromPassword(password string) string {
 	hashPwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		//TODO 如果bcrypt失败，怎么办？
+		return ""
 	}
 
 	return string(hashPwd)
