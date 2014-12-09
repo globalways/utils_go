@@ -3,7 +3,7 @@
 // Created by mint
 // Useage: 随机数
 // DATE: 14-7-8 17:41
-package algorith
+package random
 
 import "testing"
 

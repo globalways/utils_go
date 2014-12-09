@@ -15,11 +15,9 @@ package smsmgr
 
 import (
 	"github.com/astaxie/beego/cache"
-	"github.com/globalways/utils_go/algorith"
-)
-
-var (
-	defaultChars = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	"math"
+	"github.com/globalways/utils_go/random"
+	"github.com/globalways/utils_go/convert"
 )
 
 const (
@@ -29,14 +27,16 @@ const (
 )
 
 type SmsManager struct {
-	len    int
+	min    int
+	max    int
 	expire int64
 	store  cache.Cache
 }
 
 func NewSmsManager(len int, expire int64, store cache.Cache) *SmsManager {
 	return &SmsManager{
-		len:    len,
+		min: convert.Float642Int(math.Pow(10, float64(len - 1))),
+		max: convert.Float642Int(math.Pow(10, float64(len))),
 		expire: expire,
 		store:  store,
 	}
@@ -47,8 +47,8 @@ func NewDefaultSmsManager() *SmsManager {
 }
 
 // generate sms auth code
-func (s *SmsManager) getRandChars() []byte {
-	return algorith.RandomCreateBytes(s.len, defaultChars...)
+func (s *SmsManager) getRandCode() string {
+	return random.RandIntStr(s.min, s.max)
 }
 
 // generate cache key
@@ -58,7 +58,7 @@ func (s *SmsManager) key(tel string) string {
 
 func (s *SmsManager) GenSmsAuthCode(tel string) (string, error) {
 	// get the auth code
-	chars := s.getRandChars()
+	chars := s.getRandCode()
 
 	// save to store
 	k := s.key(tel)
@@ -70,7 +70,7 @@ func (s *SmsManager) GenSmsAuthCode(tel string) (string, error) {
 		return "", err
 	}
 
-	return string(chars), nil
+	return chars, nil
 }
 
 func (s *SmsManager) Verify(tel, code string) (success bool) {
@@ -78,11 +78,11 @@ func (s *SmsManager) Verify(tel, code string) (success bool) {
 		return
 	}
 
-	var chars []byte
+	var chars string
 
 	k := s.key(tel)
 
-	if v, ok := s.store.Get(k).([]byte); ok {
+	if v, ok := s.store.Get(k).(string); ok {
 		chars = v
 	} else {
 		return
@@ -93,15 +93,8 @@ func (s *SmsManager) Verify(tel, code string) (success bool) {
 		s.store.Delete(k)
 	}()
 
-	if len(chars) != len(code) {
+	if len(chars) != len(code) || chars != code{
 		return
-	}
-
-	// verify challenge
-	for i, c := range chars {
-		if c != code[i]-48 {
-			return
-		}
 	}
 
 	return true

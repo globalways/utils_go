@@ -24,3 +24,7 @@ func Int2str(i int) string {
 func Int642str(i int64) string{
 	return strconv.FormatInt(i, 10)
 }
+
+func Float642Int(i float64) int {
+	return int(i)
+}
