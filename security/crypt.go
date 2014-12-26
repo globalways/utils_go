@@ -27,7 +27,7 @@ func GenerateFromPassword(password string) string {
 	return string(hashPwd)
 }
 
-//密码判断，匹配返回tru
+//密码判断，匹配返回true
 // 否则false
 func CompareHashAndPassword(hashPwd, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashPwd), []byte(password))

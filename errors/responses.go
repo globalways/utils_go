@@ -5,6 +5,7 @@ package errors
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type CommonResponse struct {
@@ -66,4 +67,50 @@ func UnmarshalCommonResponse(bytes []byte) *CommonResponse {
 	json.Unmarshal(bytes, commonRsp)
 
 	return commonRsp
+}
+
+// 状态码json
+type Status struct {
+	Code    int    `json:"code"`
+	Message string `json:"msg"`
+}
+
+// 客户端返回json
+type ClientRsp struct {
+	Status *Status     `json:"status"`
+	Body   interface{} `json:"body"`
+}
+
+// 新建格式化状态码
+func newStatusf(code int, format string, args ...interface{}) *Status {
+	return &Status{
+		Code:    code,
+		Message: fmt.Sprintf(format, args...),
+	}
+}
+
+// 新建状态码
+func NewStatus(code int) *Status {
+	return newStatusf(code, GetCodeMessage(code))
+}
+
+// 新建格式化客户端返回值
+func NewClientRspf(code int, format string, args ...interface{}) *ClientRsp {
+	return &ClientRsp{
+		Status: newStatusf(code, format, args...),
+	}
+}
+
+// 新建固定客户端返回值
+func NewClientRsp(code int) *ClientRsp {
+	return &ClientRsp{
+		Status: newStatusf(code, GetCodeMessage(code)),
+	}
+}
+
+// 新建globalwaysError错误
+func NewGlobalwaysErrorRsp(gErr GlobalWaysError) *ClientRsp {
+	return &ClientRsp{
+		Status: newStatusf(gErr.GetCode(), gErr.GetMessage()),
+	}
 }

@@ -36,6 +36,10 @@ func RandomInt(min, max int) int {
 	return int(RandomInt64(int64(min), int64(max)))
 }
 
+func RandomUint(min, max uint) uint {
+	return uint(RandomInt64(int64(min), int64(max)))
+}
+
 //随机数字字符串
 func RandInt64Str(min, max int64) string {
 	i := RandomInt64(min, max)
