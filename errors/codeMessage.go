@@ -30,7 +30,7 @@ const (
 // http error code
 const (
 	CODE_HTTP_ERR_BASE           = -200
-	CODE_HTTP_ERR_NOT_HTTPS      = CODE_HTTP_ERR_BASE - 1
+	CODE_HTTP_ERR_NOT_ALLOW_HTTP      = CODE_HTTP_ERR_BASE - 1
 	CODE_HTTP_ERR_INVALID_PARAMS = CODE_HTTP_ERR_BASE - 2
 	CODE_HTTP_ERR_NOT_ALLOW_GET  = CODE_HTTP_ERR_BASE - 3
 )
@@ -72,7 +72,7 @@ func init() {
 	_globalWaysErrors[CODE_DB_ERR_UPDATE] = "update data error"
 	_globalWaysErrors[CODE_DB_ERR_FIND] = "find data error"
 
-	_globalWaysErrors[CODE_HTTP_ERR_NOT_HTTPS] = "api just allow https connection."
+	_globalWaysErrors[CODE_HTTP_ERR_NOT_ALLOW_HTTP] = "不需要http连接,请使用https."
 	_globalWaysErrors[CODE_HTTP_ERR_INVALID_PARAMS] = "参数错误."
 	_globalWaysErrors[CODE_HTTP_ERR_NOT_ALLOW_GET] = "不允许GET请求."
 
