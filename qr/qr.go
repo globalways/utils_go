@@ -5,9 +5,9 @@ package qr
 
 import (
 	"errors"
+	"github.com/globalways/utils_go/qr/coding"
 	"image"
 	"image/color"
-	"github.com/globalways/utils_go/qr/coding"
 )
 
 // A Level denotes a QR error correction level.

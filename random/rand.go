@@ -7,9 +7,9 @@ package random
 
 import (
 	"bytes"
-	"time"
 	"github.com/globalways/utils_go/convert"
 	"math/rand"
+	"time"
 )
 
 //生成随机字符串
@@ -38,6 +38,10 @@ func RandomInt(min, max int) int {
 
 func RandomUint(min, max uint) uint {
 	return uint(RandomInt64(int64(min), int64(max)))
+}
+
+func RandomUint64(min, max uint64) uint64 {
+	return uint64(RandomInt64(int64(min), int64(max)))
 }
 
 //随机数字字符串

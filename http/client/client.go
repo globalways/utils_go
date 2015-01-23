@@ -14,18 +14,17 @@
 package client
 
 import (
-	"encoding/json"
-	"github.com/globalways/utils_go/errors"
 	"github.com/mreiferson/httpclient"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 )
 
 var (
 	transport = &httpclient.Transport{
-		ConnectTimeout:        1 * time.Second,
+		ConnectTimeout:        2 * time.Second,
 		RequestTimeout:        10 * time.Second,
 		ResponseHeaderTimeout: 5 * time.Second,
 	}
@@ -33,7 +32,7 @@ var (
 )
 
 // 转发http请求
-func forwardHttp(method, url string, body io.Reader) (*http.Response, error) {
+func ForwardHttp(method, url string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
@@ -43,24 +42,18 @@ func forwardHttp(method, url string, body io.Reader) (*http.Response, error) {
 }
 
 // 获取http response body
-func getForwardHttpBody(body io.ReadCloser) []byte {
+func GetForwardHttpBody(body io.ReadCloser) []byte {
 	bodyBytes, _ := ioutil.ReadAll(body)
+	defer body.Close()
 
 	return bodyBytes
 }
 
-// 请求API服务器
-func ForwardAPI(method, url string, body io.Reader) (*errors.ClientRsp, error) {
-	rsp, err := forwardHttp(method, url, body)
-	if err != nil {
-		return nil, err
-	}
-	defer rsp.Body.Close()
-
-	clientRsp := new(errors.ClientRsp)
-	if err := json.Unmarshal(getForwardHttpBody(rsp.Body), clientRsp); err != nil {
-		return nil, err
+// 绑定url & params
+func BindUrlParams(url string, params url.Values) string {
+	if params == nil || len(params) == 0 {
+		return url
 	}
 
-	return clientRsp, nil
+	return url + "?" + params.Encode()
 }

@@ -4,10 +4,9 @@
 package convert
 
 import (
-	"net/url"
 	"github.com/axgle/mahonia"
+	"net/url"
 )
-
 
 //utf-8转gbk
 func Utf8ToGBK(str string) string {

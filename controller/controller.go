@@ -14,25 +14,33 @@
 package controller
 
 import (
-	"github.com/globalways/utils_go/errors"
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/validation"
+	"github.com/globalways/utils_go/errors"
+)
+
+var (
+	_ logs.BeeLogger
 )
 
 type BasicController struct {
 	beego.Controller
-	valid *validation.Validation
+	valid       *validation.Validation
 	fieldErrors []*errors.FieldError
 }
 
 func (c *BasicController) Prepare() {
+	c.valid = new(validation.Validation)
+	c.fieldErrors = make([]*errors.FieldError, 0)
+
 	//prepare for enable gzip
 	c.Ctx.Output.EnableGzip = true
 }
 
 func (c *BasicController) Finish() {
-	c.fieldErrors = c.fieldErrors[:0]
 	c.valid.Clear()
+	c.fieldErrors = c.fieldErrors[:0]
 }
 
 // forbiden http get method
@@ -55,7 +63,7 @@ func (c *BasicController) HandleParamError() bool {
 		c.RenderJson(errors.NewClientRspf(errors.CODE_HTTP_ERR_INVALID_PARAMS, c.fieldErrors[0].Message))
 
 		for _, err := range c.fieldErrors {
-			beego.BeeLogger.Debug("filedError: %v", err)
+			c.Debug("filedError: %v", err)
 		}
 
 		return true
@@ -103,7 +111,11 @@ func (c *BasicController) RenderPng(data []byte) {
 
 // http internal error
 func (c *BasicController) RenderInternalError() {
-	c.RenderJson(errors.NewClientRsp(errors.CODE_SYS_ERR_BASE))
+	c.RenderJson(errors.NewClientRspInternalError())
+}
+
+func (c *BasicController) RenderUnSupportedIdentifyError() {
+	c.RenderJson(errors.NewClientRsp(errors.CODE_BISS_ERR_UNSUPPORTED_IDENTIFY))
 }
 
 // set http status
@@ -134,4 +146,16 @@ func (c *BasicController) SetHttpContentType(ext string) {
 // combine url
 func (c *BasicController) CombineUrl(router string) string {
 	return c.Ctx.Input.Site() + router
+}
+
+func (c *BasicController) Debug(format string, v ...interface{}) {
+	beego.BeeLogger.Debug(format, v...)
+}
+
+func (c *BasicController) Info(format string, v ...interface{}) {
+	beego.BeeLogger.Info(format, v...)
+}
+
+func (c *BasicController) Error(format string, v ...interface{}) {
+	beego.BeeLogger.Error(format, v...)
 }

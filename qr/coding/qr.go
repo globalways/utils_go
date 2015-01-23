@@ -2,9 +2,9 @@ package coding
 
 import (
 	"fmt"
+	"github.com/globalways/utils_go/qr/gf256"
 	"strconv"
 	"strings"
-	"github.com/globalways/utils_go/qr/gf256"
 )
 
 // Field is the field for QR error correction.

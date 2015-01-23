@@ -94,6 +94,14 @@ func NewStatus(code int) *Status {
 	return newStatusf(code, GetCodeMessage(code))
 }
 
+func NewStatusOK() *Status {
+	return newStatusf(CODE_SUCCESS, GetCodeMessage(CODE_SUCCESS))
+}
+
+func NewStatusInternalError() *Status {
+	return newStatusf(CODE_SYS_ERR_BASE, GetCodeMessage(CODE_SYS_ERR_BASE))
+}
+
 // 新建格式化客户端返回值
 func NewClientRspf(code int, format string, args ...interface{}) *ClientRsp {
 	return &ClientRsp{
@@ -108,9 +116,37 @@ func NewClientRsp(code int) *ClientRsp {
 	}
 }
 
+func NewClientRspInternalError() *ClientRsp {
+	return NewClientRsp(CODE_SYS_ERR_BASE)
+}
+
+func NewClientRspOK() *ClientRsp {
+	return NewClientRsp(CODE_SUCCESS)
+}
+
 // 新建globalwaysError错误
 func NewGlobalwaysErrorRsp(gErr GlobalWaysError) *ClientRsp {
 	return &ClientRsp{
 		Status: newStatusf(gErr.GetCode(), gErr.GetMessage()),
 	}
+}
+
+// 解析json to clientrsp
+func Json2ClientRsp(data []byte) (*ClientRsp, bool) {
+	clientRsp := new(ClientRsp)
+	if err := json.Unmarshal(data, clientRsp); err != nil {
+		return nil, false
+	}
+
+	return clientRsp, true
+}
+
+// clientRsp 2 map[string]interface
+func (c *ClientRsp) ClientRsp2Map() (map[string]interface{}, bool) {
+	body, ok := c.Body.(map[string]interface{})
+	if !ok {
+		return nil, false
+	}
+
+	return body, true
 }

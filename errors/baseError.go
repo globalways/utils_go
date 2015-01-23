@@ -6,8 +6,8 @@
 package errors
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 )
 
 // Standard struct for general types of errors.

@@ -6,13 +6,13 @@
 package security
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"crypto/sha1"
-	"crypto/cipher"
-	"crypto/aes"
 	"golang.org/x/crypto/bcrypt"
 )
 
