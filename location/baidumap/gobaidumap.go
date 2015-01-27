@@ -14,8 +14,10 @@ import (
 
 // 注意，请到百度地图开发者中心申请自己的 App Key，下方的 key 是百度提供的，不保证永远有效。
 
-const (
+var (
 	AppKey       string = "xwCIsZzaLkFYLkCCfuAKUbkG" // baidu's
+)
+const (
 	reqURLForGEO string = "http://api.map.baidu.com/geocoder/v2/?ak="
 	reqURLForIP  string = "http://api.map.baidu.com/location/ip?ak="
 )
