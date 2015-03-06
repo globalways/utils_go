@@ -87,6 +87,12 @@ func ParseStruct(s interface{}, tag, param string) (map[string]interface{}, erro
 		} else {
 			for _, v := range strings.Split(ftag, ";") {
 				v = strings.TrimSpace(v)
+
+				if param == "" {
+					paramVal = v
+					break
+				}
+
 				if n := strings.Index(v, "("); n > 0 && strings.Index(v, ")") == len(v)-1 {
 					if v[:n] == param {
 						paramVal = v[n+1 : len(v)-1]
@@ -122,4 +128,21 @@ func snakeString(s string) string {
 		data = append(data, d)
 	}
 	return strings.ToLower(string(data[:len(data)]))
+}
+
+func SplitData(original map[string]interface{}, fields []string) (data map[string]interface{}) {
+
+	data = make(map[string]interface{})
+
+	if len(fields) != 0 {
+		for _, field := range fields {
+			if v, ok := original[field]; ok {
+				data[field] = v
+			}
+		}
+	} else {
+		data = original
+	}
+
+	return
 }
