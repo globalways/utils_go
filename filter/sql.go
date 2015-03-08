@@ -59,7 +59,7 @@ func (filter *SQLFilter) Fields() []string {
 
 func (filter *SQLFilter) SetFields(fields ...string) {
 	for _, field := range fields {
-		if container.InArray(field, filter.fields) {
+		if container.Contains(field, filter.fields) {
 			continue
 		}
 
