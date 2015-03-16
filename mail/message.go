@@ -1,251 +1,163 @@
+// Copyright 2015 mint.zhao.chiu@gmail.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License"): you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations
+// under the License.
 package mail
 
 import (
-	"bytes"
-	"encoding/base64"
-	"errors"
-	"fmt"
-	"github.com/revel/revel"
-	"mime/multipart"
-	"strings"
-	"time"
-	"unicode/utf8"
+	"github.com/globalways/utils_go/container"
+	"github.com/go-gomail/gomail"
 )
 
-var NewLine string = "\r\n"
-
 type Message struct {
-	From      string
-	ReplyTo   string
-	To        []string
-	Cc        []string
-	Bcc       []string
-	Subject   string
-	PlainBody *bytes.Buffer
-	HtmlBody  *bytes.Buffer
-
-	Date      time.Time
-	MessageId string
+	sender      [2]string
+	receivers   [][2]string
+	ccs         [][2]string
+	bccs        [][2]string
+	subject     string
+	contentType string
+	body        string
 }
 
-// NewTextMessage create a plain text message
-func NewTextMessage(to []string, subject string, body string) *Message {
-	return &Message{To: to, Subject: subject, PlainBody: bytes.NewBufferString(body)}
+func NewMessage() *Message {
+	return &Message{
+		sender:    [2]string{},
+		receivers: make([][2]string, 0),
+		ccs:       make([][2]string, 0),
+		bccs:      make([][2]string, 0),
+	}
 }
 
-// NewHtmlMessage create a html message
-func NewHtmlMessage(to []string, subject string, body string) *Message {
-	return &Message{To: to, Subject: subject, HtmlBody: bytes.NewBufferString(body)}
+func (msg *Message) SetSender(sender, senderName string) {
+	msg.sender[0] = sender
+	msg.sender[1] = senderName
 }
 
-// NewTextAndHtmlMessage create a message contains both plain text and html message
-func NewTextAndHtmlMessage(to []string, subject string, plainBody string, htmlBody string) *Message {
-	return &Message{To: to, Subject: subject, PlainBody: bytes.NewBufferString(plainBody), HtmlBody: bytes.NewBufferString(htmlBody)}
+func (msg *Message) SetReceivers(receivers ...[2]string) {
+	for _, receiver := range receivers {
+		msg.SetReceiver(receiver[0], receiver[1])
+	}
 }
 
-// RenderData render the whole email body
-func (m *Message) RenderData() (data []byte, err error) {
-	if m.HtmlBody == nil && m.PlainBody == nil {
-		err = errors.New("HtmlBody and PlainBody can not both be blank")
+func (msg *Message) SetReceiver(receiverAddr, receiverName string) {
+	receiver := [2]string{receiverAddr, receiverName}
+	if container.Contains(receiver, msg.receivers) {
 		return
 	}
 
-	switch {
-	case m.HtmlBody == nil, m.HtmlBody.Len() == 0:
-		data, err = m.renderSingleContentType("text/plain", m.PlainBody)
-	case m.PlainBody == nil, m.PlainBody.Len() == 0:
-		data, err = m.renderSingleContentType("text/html", m.HtmlBody)
-	default:
-		data, err = m.renderPlainAndHtmlText()
-	}
-
-	return
+	msg.receivers = append(msg.receivers, receiver)
 }
 
-// RenderTemplate renders the message body from the template and input parameters
-func (m *Message) RenderTemplate(templatePath string, args map[string]interface{}) error {
-	m.HtmlBody = m.renderViewTemplate(templatePath+".html", args)
-	m.PlainBody = m.renderViewTemplate(templatePath+".txt", args)
-
-	if m.HtmlBody == nil && m.PlainBody == nil {
-		return errors.New("Both HTML body and Plain body are blank.")
+func (msg *Message) SetCcs(ccs ...[2]string) {
+	for _, cc := range ccs {
+		msg.SetCc(cc[0], cc[1])
 	}
-	return nil
 }
 
-func (m *Message) renderViewTemplate(templateFilePath string, args map[string]interface{}) *bytes.Buffer {
-	// Get the Template.
-	template, err := revel.MainTemplateLoader.Template(templateFilePath)
-	if err != nil {
-		return nil
+func (msg *Message) SetCc(ccAddr, ccName string) {
+	cc := [2]string{ccAddr, ccName}
+	if container.Contains(cc, msg.ccs) {
+		return
 	}
 
-	var b bytes.Buffer
-
-	err = template.Render(&b, args)
-	if err != nil {
-		return nil
-	}
-
-	return &b
+	msg.ccs = append(msg.ccs, cc)
 }
 
-func (m *Message) renderSingleContentType(contentType string, bodyText *bytes.Buffer) ([]byte, error) {
-	var b bytes.Buffer
-	m.writeRecipient(&b)
-
-	if err := m.writeMessageId(&b); err != nil {
-		return nil, err
+func (msg *Message) SetBccs(bccs ...[2]string) {
+	for _, bcc := range bccs {
+		msg.SetBcc(bcc[0], bcc[1])
 	}
-
-	if err := m.writeDate(&b); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeMIME(&b); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeContentType(&b, contentType); err != nil {
-		return nil, err
-	}
-
-	if _, err := b.Write(bodyText.Bytes()); err != nil {
-		return nil, err
-	}
-
-	return b.Bytes(), nil
 }
 
-func (m *Message) renderPlainAndHtmlText() ([]byte, error) {
-	writer := multipart.NewWriter(bytes.NewBufferString(""))
-	var b bytes.Buffer
-	m.writeRecipient(&b)
-
-	if err := m.writeMessageId(&b); err != nil {
-		return nil, err
+func (msg *Message) SetBcc(bccAddr, bccName string) {
+	bcc := [2]string{bccAddr, bccName}
+	if container.Contains(bcc, msg.bccs) {
+		return
 	}
 
-	if err := m.writeDate(&b); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeMIME(&b); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeMultipartStart(&b, writer); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeContentTypeWithBoundary(&b, writer, "text/plain"); err != nil {
-		return nil, err
-	}
-
-	if _, err := b.Write(m.PlainBody.Bytes()); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeContentTypeWithBoundary(&b, writer, "text/html"); err != nil {
-		return nil, err
-	}
-
-	if _, err := b.Write(m.HtmlBody.Bytes()); err != nil {
-		return nil, err
-	}
-
-	if err := m.writeMultipartEnd(&b, writer); err != nil {
-		return nil, err
-	}
-
-	return b.Bytes(), nil
+	msg.bccs = append(msg.bccs, bcc)
 }
 
-func (m *Message) writeRecipient(b *bytes.Buffer) {
-	if m.From != "" {
-		fmt.Fprintf(b, "From: %s %s", m.From, NewLine)
+func (msg *Message) SetSubject(subject string) {
+	msg.subject = subject
+}
+
+func (msg *Message) SetPlainBody(body string) {
+	msg.contentType = "text/plain"
+	msg.body = body
+}
+
+func (msg *Message) SetHttpBody(body string) {
+	msg.contentType = "text/html"
+	msg.body = body
+}
+
+func (msg *Message) mail() *gomail.Message {
+	message := gomail.NewMessage()
+
+	// From
+	senderAddr := msg.sender[0]
+	senderName := msg.sender[1]
+	if senderName != "" {
+		message.SetAddressHeader("From", senderAddr, senderName)
+	} else {
+		message.SetHeader("From", senderAddr)
 	}
 
-	if m.ReplyTo != "" {
-		fmt.Fprintf(b, "Reply-To: %s %s", m.ReplyTo, NewLine)
-	}
-
-	if len(m.To) > 0 {
-		fmt.Fprintf(b, "To: %s %s", strings.Join(m.To, ", "), NewLine)
-	}
-
-	if len(m.Cc) > 0 {
-		fmt.Fprintf(b, "Cc: %s %s", strings.Join(m.Cc, ", "), NewLine)
-	}
-
-	if m.Subject != "" {
-		subjectBytes := []byte(m.Subject)
-		if len(subjectBytes) == utf8.RuneCount(subjectBytes) {
-			fmt.Fprintf(b, "Subject: %s %s", m.Subject, NewLine)
+	// To
+	receivers := make([]string, 0)
+	for _, receiver := range msg.receivers {
+		receiverAddr := receiver[0]
+		receiverName := receiver[1]
+		if receiverName != "" {
+			receivers = append(receivers, message.FormatAddress(receiverAddr, receiverName))
 		} else {
-			fmt.Fprintf(b, "Subject: =?UTF-8?B?%s?= %s", base64.StdEncoding.EncodeToString(subjectBytes), NewLine)
+			receivers = append(receivers, receiverAddr)
 		}
 	}
-}
+	message.SetHeader("To", receivers...)
 
-func (m *Message) writeDate(b *bytes.Buffer) error {
-	if m.Date.IsZero() {
-		m.Date = time.Now()
+	// CC
+	ccs := make([]string, 0)
+	for _, cc := range msg.ccs {
+		ccAddr := cc[0]
+		ccName := cc[1]
+		if ccName != "" {
+			ccs = append(ccs, message.FormatAddress(ccAddr, ccName))
+		} else {
+			ccs = append(ccs, ccAddr)
+		}
 	}
+	message.SetHeader("Cc", ccs...)
 
-	_, err := b.WriteString("Date: " + m.Date.UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT") + "\n")
-	return err
-}
+	// Bcc
+	bccs := make([]string, 0)
+	for _, bcc := range msg.bccs {
+		bccAddr := bcc[0]
+		bccName := bcc[1]
 
-func (m *Message) writeMessageId(b *bytes.Buffer) error {
-	if m.MessageId == "" {
-		return nil
+		if bccName != "" {
+			bccs = append(bccs, message.FormatAddress(bccAddr, bccName))
+		} else {
+			bccs = append(bccs, bccAddr)
+		}
 	}
+	message.SetHeader("Bcc", bccs...)
 
-	_, err := b.WriteString("Message-Id: <" + m.MessageId + ">\n")
-	return err
-}
+	// Subject
+	message.SetHeader("Subject", msg.subject)
 
-func (m *Message) writeMIME(b *bytes.Buffer) error {
-	_, err := b.WriteString("MIME-Version: 1.0")
-	return err
-}
+	// Body
+	message.SetBody(msg.contentType, msg.body)
 
-func (m *Message) writeContentType(b *bytes.Buffer, contentType string) error {
-	contentTypeFormat := `
-Content-Type: %s; charset="UTF-8";
-Content-Transfer-Encoding: 8bit
-
-`
-	_, err := b.WriteString(fmt.Sprintf(contentTypeFormat, contentType))
-	return err
-}
-
-func (m *Message) writeMultipartStart(b *bytes.Buffer, writer *multipart.Writer) error {
-	multipart := `
-Content-Type: multipart/alternative; charset="UTF-8"; boundary="%s"
-`
-	_, err := b.WriteString(fmt.Sprintf(multipart, writer.Boundary()))
-	return err
-}
-
-func (m *Message) writeMultipartEnd(b *bytes.Buffer, writer *multipart.Writer) error {
-	multipart := `
---%s--
-
-`
-	_, err := b.WriteString(fmt.Sprintf(multipart, writer.Boundary()))
-	return err
-}
-
-func (m *Message) writeContentTypeWithBoundary(b *bytes.Buffer, writer *multipart.Writer, contentType string) error {
-	contentTypeFormat := `
-
---%s
-Content-Type: %s; charset=UTF-8;
-Content-Transfer-Encoding: 8bit
-
-`
-	_, err := b.WriteString(fmt.Sprintf(contentTypeFormat, writer.Boundary(), contentType))
-	return err
+	return message
 }

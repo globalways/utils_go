@@ -14,12 +14,12 @@
 package client
 
 import (
-	"github.com/mreiferson/httpclient"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"time"
+	"github.com/aiwuTech/httpclient"
 )
 
 var (

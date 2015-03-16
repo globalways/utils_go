@@ -54,7 +54,6 @@ func (s *SmsManager) sendSMS(messages chan []string) {
 			log.Printf("---SMS Manager---: current sms chan len: %v\n", len(s.smsChan))
 		}
 	}
-
 }
 
 // 模版发送协程
@@ -76,7 +75,6 @@ func (s *SmsManager) sendSMS_tpl(messages chan map[int64][2][]string) {
 			log.Printf("---SMS Manager---: current sms template chan len: %v\n", len(s.smsChan))
 		}
 	}
-
 }
 
 // 新建短信manager

@@ -14,10 +14,12 @@
 package filter
 
 import (
+	"fmt"
 	"github.com/astaxie/beego/orm"
 	"github.com/globalways/utils_go/container"
 	"github.com/globalways/utils_go/convert"
 	"github.com/globalways/utils_go/page"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -27,11 +29,138 @@ var (
 	_ url.Values
 )
 
+const (
+	Invalid byte = iota
+	Exact
+	Exact_i
+	Contains
+	Contains_i
+	In
+	GT
+	GTE
+	LT
+	LTE
+	Start
+	Start_i
+	End
+	End_i
+	Null
+	Between
+	OrderBy
+)
+
+const (
+	Type_invalid byte = iota
+	Type_string
+	Type_int
+)
+
+const (
+	itemSep   = "|"
+	insideSep = "-"
+	valueSep  = ","
+)
+
+// curl -i -d "fields=id,status,created&page=2&size=10&search=status-5-1,4-2|hong_id-6-50000-2" -G 127.0.0.1:8081/v1/admins/members
+
+type SQLFilterItem struct {
+	key       string
+	operation byte
+	value     string
+	valType   byte
+}
+
+func parseSQLFilterItems(s string) (filterItems []*SQLFilterItem) {
+	defer func() {
+		for _, item := range filterItems {
+			log.Printf("item: %+v\n", item)
+		}
+	}()
+
+	filterItems = make([]*SQLFilterItem, 0)
+	if s == "" {
+		return
+	}
+
+	items := strings.Split(s, itemSep)
+	for _, item := range items {
+		insides := strings.Split(item, insideSep)
+		if len(insides) != 4 {
+			continue
+		}
+
+		key := insides[0]
+		operation := convert.Str2Byte(insides[1])
+		strValue := insides[2]
+		valType := convert.Str2Byte(insides[3])
+
+		filterItem := &SQLFilterItem{
+			key:       key,
+			operation: operation,
+			value:     strValue,
+			valType:   valType,
+		}
+
+		filterItems = append(filterItems, filterItem)
+	}
+
+	return
+}
+
+func (item *SQLFilterItem) Value() interface{} {
+	operation := item.operation
+	value := item.value
+	valType := item.valType
+
+	switch operation {
+	case Exact, Exact_i:
+		switch valType {
+		case Type_string:
+			return value
+		case Type_int:
+			return convert.Str2Int64(value)
+		default:
+			return value
+		}
+	case Contains, Contains_i, Start, Start_i, End, End_i:
+		return value
+	case GT, GTE, LT, LTE:
+		return convert.Str2Int64(value)
+	case In, Between:
+		stringValues := make([]string, 0)
+		if value != "" {
+			stringValues = strings.Split(value, valueSep)
+		}
+		switch valType {
+		case Type_string:
+			return stringValues
+		case Type_int:
+			intValues := make([]int64, 0)
+			for _, v := range stringValues {
+				intValues = append(intValues, convert.Str2Int64(v))
+			}
+			return intValues
+		}
+	case Null:
+		upperValue := strings.ToUpper(value)
+		if upperValue == "TRUE" || upperValue == "1" || upperValue == "YES" {
+			return true
+		} else {
+			return false
+		}
+	default:
+		return value
+	}
+
+	return nil
+}
+
 type SQLFilter struct {
-	pager   *page.Paginator
-	orderBy []string
-	fields  []string
-	params  map[string]interface{}
+	pager       *page.Paginator
+	fields      []string
+	params      map[string]interface{}
+	filterItems []*SQLFilterItem
+
 	request *http.Request
 }
 
@@ -39,17 +168,19 @@ func (filter *SQLFilter) Pager() *page.Paginator {
 	return filter.pager
 }
 
-func (filter *SQLFilter) OrderBy() []string {
-	return filter.orderBy
+func (filter *SQLFilter) SetPager(pageNum, pageSize int) {
+	if pageNum > 0 && pageSize > 0 {
+		filter.pager = page.NewDBPaginator(pageNum, pageSize)
+	}
 }
 
-func (filter *SQLFilter) SetOrderBys(orderBys ...string) {
-	for _, orderBy := range orderBys {
-		if container.InArray(orderBy, filter.orderBy) {
+func (filter *SQLFilter) SetFilterItems(items ...*SQLFilterItem) {
+	for _, item := range items {
+		if item == nil || container.Contains(item, filter.filterItems) {
 			continue
 		}
 
-		filter.orderBy = append(filter.orderBy, orderBy)
+		filter.filterItems = append(filter.filterItems, item)
 	}
 }
 
@@ -59,7 +190,7 @@ func (filter *SQLFilter) Fields() []string {
 
 func (filter *SQLFilter) SetFields(fields ...string) {
 	for _, field := range fields {
-		if container.Contains(field, filter.fields) {
+		if field == "" || container.Contains(field, filter.fields) {
 			continue
 		}
 
@@ -68,7 +199,9 @@ func (filter *SQLFilter) SetFields(fields ...string) {
 }
 
 func (filter *SQLFilter) DelFields(fields ...string) {
-
+	for _, field := range fields {
+		container.Delete(field, filter.fields)
+	}
 }
 
 func (filter *SQLFilter) Params() orm.Params {
@@ -104,9 +237,43 @@ func (filter *SQLFilter) Query(querySeter orm.QuerySeter) orm.QuerySeter {
 		querySeter = querySeter.Limit(pager.Size(), pager.Offset())
 	}
 
-	orderBy := filter.OrderBy()
-	if len(orderBy) != 0 {
-		querySeter = querySeter.OrderBy(orderBy...)
+	for _, item := range filter.filterItems {
+		key := item.key
+		operation := item.operation
+		value := item.Value()
+
+		switch operation {
+		case Invalid:
+			continue
+		case Exact:
+			querySeter = querySeter.Filter(key, value)
+		case Exact_i:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__iexact", key), value)
+		case Contains:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__contains", key), value)
+		case Contains_i:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__icontains", key), value)
+		case In:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__in", key), value)
+		case GT:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__gt", key), value)
+		case GTE:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__gte", key), value)
+		case LT:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__lt", key), value)
+		case LTE:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__lte", key), value)
+		case Start:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__startswith", key), value)
+		case Start_i:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__istartswith", key), value)
+		case End:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__endswith", key), value)
+		case End_i:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__iendswith", key), value)
+		case Null:
+			querySeter = querySeter.Filter(fmt.Sprintf("%s__isnull", key), value)
+		}
 	}
 
 	return querySeter
@@ -117,30 +284,28 @@ func NewSQLFilter(r *http.Request) *SQLFilter {
 		r.ParseForm()
 	}
 
+	log.Println(r.URL.RequestURI())
+
 	pageNum := convert.Str2Int(r.Form.Get("page"))
 	pageSize := convert.Str2Int(r.Form.Get("size"))
-	orderby := r.Form.Get("orderby")
 	fields := r.Form.Get("fields")
+	search := r.Form.Get("search")
+	log.Println(search)
 
 	sqlFilter := new(SQLFilter)
 	sqlFilter.request = r
-	if pageNum > 0 && pageSize > 0 {
-		sqlFilter.pager = page.NewDBPaginator(pageNum, pageSize)
-	}
-	if orderby != "" {
-		sqlFilter.orderBy = strings.Split(orderby, ",")
-	}
-	if fields != "" {
-		sqlFilter.fields = strings.Split(fields, ",")
-	}
+
+	sqlFilter.SetPager(pageNum, pageSize)
+	sqlFilter.SetFields(strings.Split(fields, ",")...)
+	sqlFilter.SetFilterItems(parseSQLFilterItems(search)...)
 
 	return sqlFilter
 }
 
 func NewDefaultSQLFilter() *SQLFilter {
 	return &SQLFilter{
-		params:  make(map[string]interface{}),
-		orderBy: make([]string, 0),
-		fields:  make([]string, 0),
+		params:      make(map[string]interface{}),
+		fields:      make([]string, 0),
+		filterItems: make([]*SQLFilterItem, 0),
 	}
 }

@@ -177,7 +177,7 @@ func (c *BasicController) RequestSQLFilter() *filter.SQLFilter {
 func (c *BasicController) HttpBodyUnmarshal(obj interface{}) error {
 	err := json.Unmarshal(c.GetHttpBody(), obj)
 	if err != nil {
-		c.Debug("http body unmarshal error: %v", err)
+		beego.Debug("http body unmarshal error: %v", err)
 	}
 
 	return err
@@ -191,18 +191,6 @@ func (c *BasicController) SetHttpContentType(ext string) {
 // combine url
 func (c *BasicController) CombineUrl(router string) string {
 	return c.Ctx.Input.Site() + router
-}
-
-func (c *BasicController) Debug(format string, v ...interface{}) {
-	beego.BeeLogger.Debug(format, v...)
-}
-
-func (c *BasicController) Info(format string, v ...interface{}) {
-	beego.BeeLogger.Info(format, v...)
-}
-
-func (c *BasicController) Error(format string, v ...interface{}) {
-	beego.BeeLogger.Error(format, v...)
 }
 
 func (c *BasicController) UnmarshalForm() (args map[string]interface{}) {
@@ -246,17 +234,18 @@ func (c *BasicController) Fields() (fields []string) {
 }
 
 func (c *BasicController) DefaultPageSize() {
-	ps := c.GetString("page")
-	if ps == "" {
-		c.Ctx.Request.Form.Add("page", "1")
+	// "/"
+	if !strings.Contains(c.Url(), "all") {
+		if c.GetString("page") == "" {
+			c.Ctx.Request.Form.Add("page", "1")
+		}
+		if c.GetString("size") == "" {
+			c.Ctx.Request.Form.Add("size", "10")
+		}
+	} else { // "/all"
+		c.Ctx.Request.Form.Del("page")
+		c.Ctx.Request.Form.Del("size")
 	}
-
-	ss := c.GetString("size")
-	if ss == "" {
-		c.Ctx.Request.Form.Add("size", "10")
-	}
-
-	return
 }
 
 func (c *BasicController) DeletePageSize() {
@@ -264,6 +253,10 @@ func (c *BasicController) DeletePageSize() {
 	c.Ctx.Request.Form.Del("size")
 }
 
-func (c *BasicController) Default(obj DefaultValuer) {
-	obj.Default()
+func (c *BasicController) Default(obj interface{}) {
+	if o, ok := obj.(DefaultValuer); ok {
+		o.Default()
+	}
+
+	return
 }
