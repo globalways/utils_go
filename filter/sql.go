@@ -15,10 +15,10 @@ package filter
 
 import (
 	"fmt"
+	"github.com/aiwuTech/devKit/container"
+	"github.com/aiwuTech/devKit/convert"
+	"github.com/aiwuTech/devKit/page"
 	"github.com/astaxie/beego/orm"
-	"github.com/globalways/utils_go/container"
-	"github.com/globalways/utils_go/convert"
-	"github.com/globalways/utils_go/page"
 	"log"
 	"net/http"
 	"net/url"
@@ -160,12 +160,28 @@ type SQLFilter struct {
 	fields      []string
 	params      map[string]interface{}
 	filterItems []*SQLFilterItem
+	condition   *orm.Condition
+	orderBys    []string
 
 	request *http.Request
 }
 
 func (filter *SQLFilter) Pager() *page.Paginator {
 	return filter.pager
+}
+
+func (filter *SQLFilter) SetCondition(cond *orm.Condition) {
+	filter.condition = filter.condition.AndCond(cond)
+}
+
+func (filter *SQLFilter) SetOrderBys(orders ...string) {
+	for _, order := range orders {
+		if order == "" || container.Contains(order, filter.orderBys) {
+			continue
+		}
+
+		filter.orderBys = append(filter.orderBys, order)
+	}
 }
 
 func (filter *SQLFilter) SetPager(pageNum, pageSize int) {
@@ -214,6 +230,7 @@ func (filter *SQLFilter) Params() orm.Params {
 		params[field] = filter.request.Form.Get(field)
 	}
 
+	log.Printf("params: %+v\n", params)
 	return orm.Params(params)
 }
 
@@ -276,6 +293,14 @@ func (filter *SQLFilter) Query(querySeter orm.QuerySeter) orm.QuerySeter {
 		}
 	}
 
+	// condition
+	if !filter.condition.IsEmpty() {
+		querySeter = querySeter.SetCond(filter.condition)
+	}
+
+	// order by
+	querySeter = querySeter.OrderBy(filter.orderBys...)
+
 	return querySeter
 }
 
@@ -290,10 +315,11 @@ func NewSQLFilter(r *http.Request) *SQLFilter {
 	pageSize := convert.Str2Int(r.Form.Get("size"))
 	fields := r.Form.Get("fields")
 	search := r.Form.Get("search")
-	log.Println(search)
 
 	sqlFilter := new(SQLFilter)
 	sqlFilter.request = r
+	sqlFilter.condition = orm.NewCondition()
+	sqlFilter.orderBys = make([]string, 0)
 
 	sqlFilter.SetPager(pageNum, pageSize)
 	sqlFilter.SetFields(strings.Split(fields, ",")...)
@@ -307,5 +333,7 @@ func NewDefaultSQLFilter() *SQLFilter {
 		params:      make(map[string]interface{}),
 		fields:      make([]string, 0),
 		filterItems: make([]*SQLFilterItem, 0),
+		condition:   orm.NewCondition(),
+		orderBys:    make([]string, 0),
 	}
 }
