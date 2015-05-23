@@ -6,14 +6,12 @@
 package security
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
 )
 
 //密码加密
@@ -54,29 +52,6 @@ func Base64Decode(src string) string {
 	return string(code)
 }
 
-var key = MD5byte("gwsadmin")
-var iv = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
-
-//md5加密
-func MD5(s string) string {
-	return MD5Ex(s)
-}
-
-func MD5byte(s string) []byte {
-	h := md5.New()
-	h.Write([]byte(s))
-	return h.Sum(nil)
-}
-
-//加盐强密码
-func MD5Ex(s string) string {
-	h := md5.New()
-	h.Write(key)
-	h.Write([]byte(s))
-	h.Write(iv)
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
 //sha1加密
 func SHA1(s string) string {
 	return hex.EncodeToString(SHA1Byte(s))
@@ -88,26 +63,10 @@ func SHA1Byte(s string) []byte {
 	return h.Sum(nil)
 }
 
-//AES编码
-func AesEncode(src []byte) ([]byte, error) {
-	var s []byte
-	c, err := aes.NewCipher(key)
-	if err == nil {
-		cfb := cipher.NewCFBEncrypter(c, iv)
-		s = make([]byte, len(src))
-		cfb.XORKeyStream(s, src)
-	}
-	return s, err
-}
+// md5 16位加密 大写
+func Md5Upper16(param, salt string) string {
+	h := md5.New()
+	h.Write([]byte(param))
 
-//AES解码
-func AesDecode(src []byte) ([]byte, error) {
-	var s []byte
-	c, err := aes.NewCipher(key)
-	if err == nil {
-		cfb := cipher.NewCFBDecrypter(c, iv)
-		s = make([]byte, len(src))
-		cfb.XORKeyStream(s, src)
-	}
-	return s, err
+	return strings.ToUpper(hex.EncodeToString(h.Sum(nil))[8:24])
 }

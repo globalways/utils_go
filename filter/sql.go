@@ -19,7 +19,6 @@ import (
 	"github.com/aiwuTech/devKit/convert"
 	"github.com/aiwuTech/devKit/page"
 	"github.com/astaxie/beego/orm"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -71,12 +70,6 @@ type SQLFilterItem struct {
 }
 
 func parseSQLFilterItems(s string) (filterItems []*SQLFilterItem) {
-	defer func() {
-		for _, item := range filterItems {
-			log.Printf("item: %+v\n", item)
-		}
-	}()
-
 	filterItems = make([]*SQLFilterItem, 0)
 	if s == "" {
 		return
@@ -166,10 +159,6 @@ type SQLFilter struct {
 	request *http.Request
 }
 
-func (filter *SQLFilter) Pager() *page.Paginator {
-	return filter.pager
-}
-
 func (filter *SQLFilter) SetCondition(cond *orm.Condition) {
 	filter.condition = filter.condition.AndCond(cond)
 }
@@ -184,9 +173,15 @@ func (filter *SQLFilter) SetOrderBys(orders ...string) {
 	}
 }
 
+func (filter *SQLFilter) Pager() *page.Paginator {
+	return filter.pager
+}
+
 func (filter *SQLFilter) SetPager(pageNum, pageSize int) {
 	if pageNum > 0 && pageSize > 0 {
 		filter.pager = page.NewDBPaginator(pageNum, pageSize)
+	} else {
+		filter.pager = nil
 	}
 }
 
@@ -221,25 +216,27 @@ func (filter *SQLFilter) DelFields(fields ...string) {
 }
 
 func (filter *SQLFilter) Params() orm.Params {
-	if len(filter.params) != 0 {
-		return orm.Params(filter.params)
-	}
-
 	params := make(map[string]interface{})
 	for _, field := range filter.fields {
-		params[field] = filter.request.Form.Get(field)
+		if filter.request != nil && filter.request.Form.Get(field) != "" {
+			params[field] = filter.request.Form.Get(field)
+		}
+	}
+	for k, v := range filter.params {
+		params[k] = v
 	}
 
-	log.Printf("params: %+v\n", params)
 	return orm.Params(params)
 }
 
 func (filter *SQLFilter) SetParam(key string, val interface{}) {
+	filter.SetFields(key)
 	filter.params[key] = val
 }
 
 func (filter *SQLFilter) SetParams(vals map[string]interface{}) {
 	for key, val := range vals {
+		filter.SetFields(key)
 		filter.params[key] = val
 	}
 }
@@ -247,6 +244,11 @@ func (filter *SQLFilter) SetParams(vals map[string]interface{}) {
 func (filter *SQLFilter) Query(querySeter orm.QuerySeter) orm.QuerySeter {
 	if querySeter == nil {
 		return nil
+	}
+
+	// condition
+	if !filter.condition.IsEmpty() {
+		querySeter = querySeter.SetCond(filter.condition)
 	}
 
 	pager := filter.Pager()
@@ -293,11 +295,6 @@ func (filter *SQLFilter) Query(querySeter orm.QuerySeter) orm.QuerySeter {
 		}
 	}
 
-	// condition
-	if !filter.condition.IsEmpty() {
-		querySeter = querySeter.SetCond(filter.condition)
-	}
-
 	// order by
 	querySeter = querySeter.OrderBy(filter.orderBys...)
 
@@ -309,20 +306,18 @@ func NewSQLFilter(r *http.Request) *SQLFilter {
 		r.ParseForm()
 	}
 
-	log.Println(r.URL.RequestURI())
-
 	pageNum := convert.Str2Int(r.Form.Get("page"))
 	pageSize := convert.Str2Int(r.Form.Get("size"))
 	fields := r.Form.Get("fields")
+	orderBys := r.Form.Get("orderby")
 	search := r.Form.Get("search")
 
-	sqlFilter := new(SQLFilter)
+	sqlFilter := NewDefaultSQLFilter()
 	sqlFilter.request = r
-	sqlFilter.condition = orm.NewCondition()
-	sqlFilter.orderBys = make([]string, 0)
 
 	sqlFilter.SetPager(pageNum, pageSize)
 	sqlFilter.SetFields(strings.Split(fields, ",")...)
+	sqlFilter.SetOrderBys(strings.Split(orderBys, ",")...)
 	sqlFilter.SetFilterItems(parseSQLFilterItems(search)...)
 
 	return sqlFilter
